@@ -122,9 +122,13 @@ The command:
 COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
   IF NOT users HAS_KEY u.uid {
     PUT users u
-    RETURN PutUserResponse{PutUserResponseStatus.OK, "User added."}
+    RETURN PutUserResponse { PutUserResponseStatus.OK, "User added."}
   } ELSE {
-    RETURN PutUserResponse{PutUserResponseStatus.ALREADY_EXISTS, "The user with this ID already exists."}
+    # NOTE(dkorolev): Multiple lines without commas are allowed.
+    RETURN PutUserResponse {
+      PutUserResponseStatus.ALREADY_EXISTS
+      "The user with this ID already exists."
+    }
   }
 }
 ```
@@ -134,9 +138,18 @@ Alternatively:
 ```
 COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
   if PUT_IF_ABSENT users u {
-    RETURN PutUserResponse{PutUserResponseStatus.OK, "User added."}
+    # NOTE(dkorolev): Not specifying enum value "namespace" is allowed.
+    RETURN PutUserResponse {
+      OK
+      "User added."
+    }
   } ELSE {
-    RETURN PutUserResponse{PutUserResponseStatus.ALREADY_EXISTS, "The user with this ID already exists."}
+    # NOTE(dkorolev): Not specifying the type is also allowed.
+    #                 Everything that can be inferred is inferred.
+    RETURN {
+      ALREADY_EXISTS
+      "The user with this ID already exists."
+    }
   }
 }
 ```
@@ -286,7 +299,7 @@ COMMAND ValidateEmail(v ValidateEmailRequest) RETURNS ValidateEmailResponse {
   validation_code = VALUE email_record.validation_code
 
   IF u.email_validated {
-    # NOTE(dkorolev): A future unit test: if the user changes their email, need to re-validate it.
+    # NOTE(dkorolev): A future unit test: Need to re-validate changed emails.
     RETURN {
       OK  # Do not share that the user's email was already validated before this call.
       email: v.email
@@ -315,14 +328,14 @@ COMMAND ValidateEmail(v ValidateEmailRequest) RETURNS ValidateEmailResponse {
 ## Support the logic to send the validation code.
 
 ```
-TYPE GenerateEmailValidationCodeResponse ENUM INTEGER {
+TYPE SendCodeResponse ENUM INTEGER {
   OK = 0
   USER_DOES_NOT_EXIST = 1
   TRY_LATER = 2
   INTERNAL_ERROR = -1
 }
 
-COMMAND SendEmailValicationCode(uid UserID, code STRING) RETURNS GenerateEmailValidationCodeResponse {
+COMMAND SendEmailValicationCode(uid UserID, code STRING) RETURNS SendCodeResponse {
   IF NOT users HAS_KEY uid {
     RETURN { USER_DOES_NOT_EXIST }
   }

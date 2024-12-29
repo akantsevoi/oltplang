@@ -12,7 +12,7 @@ Obligatory disclaimers:
 ## Define a `ProtoUser`
 
 A `ProtoUser` is the user type with string `name` as the key (sic!), and int `age` as the only data field.
-```
+```python
 # Define the type. Self-explanatory.
 # Note that the syntax does use curly braces.
 # Semicolons and extra parentheses are avoided by design though.
@@ -27,7 +27,7 @@ TYPE ProtoUser {
 
 ## Define the storage schema (`DB`) for the `ProtoUser`-s table
 
-```
+```python
 # Ensure that the database contains the table (dictionary) of users.
 # The `DB` block can be used multiple times.
 # Of course, in the real code, there will be a special "OLTP source" file for the DB schema.
@@ -49,8 +49,7 @@ DB {
 
 Note that PUT is not directly an HTTP verb, just a convenient term.
 
-```
-
+```python
 # The `COMMAND` syntax defined the mutation for the OLTP storage.
 # It gets its own sequence ID, is executed serially, and is reproducible/replayable.
 # For strongly consisteny reads, use `QUERY`.
@@ -69,7 +68,7 @@ COMMAND PutProtoUser(u ProtoUser) {
 
 The above is a DSL, which is transpiled to be used natively from higher-level languages. For instance, from Java/C++:
 
-```
+```python
 OLTP.PutProtoUser(OLTP.ProtoUser().name("John Doe").age(42));
 ```
 
@@ -77,7 +76,7 @@ OLTP.PutProtoUser(OLTP.ProtoUser().name("John Doe").age(42));
 
 And make it impossible to PUT a user with an existing ID.
 
-```
+```python
 # A dedicated type, with `STRING` as the underlying storage type and UUID as the value.
 TYPE UserID UUID
 
@@ -91,7 +90,7 @@ TYPE User {
 
 Also, the DB record:
 
-```
+```python
 # This one-liner is legal.
 DB { users TABLE<User> { PRIMARY_KEY uid } }
 
@@ -104,7 +103,7 @@ This also demonstrates that `COMMAND`-s can have custom return types. This examp
 
 Types:
 
-```
+```python
 TYPE PutUserResponseStatus ENUM INTEGER {
   OK = 0
   ALREADY_EXISTS = 409
@@ -118,7 +117,7 @@ TYPE PutUserResponse {
 
 The command:
 
-```
+```python
 COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
   IF NOT users HAS_KEY u.uid {
     PUT users u
@@ -135,7 +134,7 @@ COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
 
 Alternatively:
 
-```
+```python
 COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
   if PUT_IF_ABSENT users u {
     # NOTE(dkorolev): Not specifying enum value "namespace" is allowed.
@@ -160,18 +159,18 @@ Add email addresses to users. And respect the constraint that no two users can h
 
 We could use users' emails as keys, but this would be too easy. Instead, let's add another table ("dictionary") that map registered email addresses to registered user IDs.
 
-```
+```python
 TYPE EmailToUserMapping {
   email STRING
   uid UserID
 }
 ```
 
-```
+```python
 DB { user_emails TABLE<EmailToUserMapping> { PRIMARY_KEY email } }
 ```
 
-```
+```python
 TYPE PutUserResponseStatus ENUM INTEGER {
   OK = 0
   EMAIL_ALREADY_REGISTERED = 1
@@ -186,7 +185,7 @@ TYPE PutUserResponse {
 }
 ```
 
-```
+```python
 COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
   IF NOT users HAS_KEY users u.uid {
     IF NOT user_emails HAS_KEY u.email {
@@ -215,7 +214,7 @@ COMMAND PutUserIfNotPresent(u User) RETURNS PutUserResponse {
 
 First, extend the storage to include email verification codes and the necessary timestamps.
 
-```
+```python
 TYPE EmailValidationCode {
   secret_code STRING
   sent_time EPOCH_MS
@@ -234,7 +233,7 @@ DB { user_emails TABLE<EmailToUserMapping> { PRIMARY_KEY email } }
 
 Also, extend the `User` type and add the `email_validated` field.
 
-```
+```python
 TYPE User {
   uid UserID
   name STRING
@@ -245,7 +244,7 @@ TYPE User {
 
 Now, the command and its schema.
 
-```
+```python
 TYPE ValidateEmailRequest {
   email STRING
   secret_code STRING
@@ -264,7 +263,7 @@ TYPE ValidateEmailResponse {
 }
 ```
 
-```
+```python
 COMMAND ValidateEmail(v ValidateEmailRequest) RETURNS ValidateEmailResponse {
   IF NOT user_emails HAS_KEY v.email {
     RETURN {
@@ -327,7 +326,7 @@ COMMAND ValidateEmail(v ValidateEmailRequest) RETURNS ValidateEmailResponse {
 
 ## Support the logic to send the validation code.
 
-```
+```python
 TYPE SendCodeResponse ENUM INTEGER {
   OK = 0
   USER_DOES_NOT_EXIST = 1

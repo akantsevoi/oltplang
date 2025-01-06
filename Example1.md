@@ -1,4 +1,6 @@
-Example of usage where we combing marroon-daemon operations and oltp operations
+Example of usage where we are combining marroon-daemon operations and oltp operations.
+Since we're changing the data that is being migrated our engine keeps track of object's versions, keeps track of what has been migrated and what's not and where exactly the update should be written and committed.
+
 
 ```python
 

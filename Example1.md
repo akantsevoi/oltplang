@@ -4,6 +4,7 @@ Since we're changing the data that is being migrated our engine keeps track of o
 
 ```python
 
+
 # migrates users and accounts from one db to another while maintaining OLTP queries
 
 maroon-daemoon {
@@ -58,6 +59,11 @@ oltp {
 # my fuzzy view on how it might look like
 #
 
+GLOBAL_SCHEMA_DEFINITION {
+	TARGET_STORAGE_FOR_TRANSFERS = storePSQL		
+	TARGET_STORAGE_FOR_ACCOUNTS = storePSQL	  
+}
+
 type Meta {
 	version int64
 	hash string
@@ -88,6 +94,75 @@ impl combinedStore {
 		storages.get(obj.storage).Update(table,  obj) # unconditional write? since we control the sequence
 	}
 }
+
+
+#
+# view on how payment function might be transpiled/unwrapped/translated
+#
+
+def payment(srcAcc: string, dstAcc: string, amount: int) {
+		# let tx = combinedStore.txStart();
+		#
+		## !translated into:! ? TODO: think about what tx start/end here might be?
+
+		# if combinedStore.accounts[srcAcc].amount <= amount {
+		# 	return InsufficientFunds{...}
+		# }
+		#
+		## !translated into:!
+	
+		# keep in mind that in that case it doesn't matter in which storage `src` and `dst` objects are located. Can be the same can be different
+		let src = combinedStore.get("Accounts", srcAcc); 
+		let dst = combinedStore.get("Accounts", dstAcc);
+
+		if src.Body.amount <= amount { return InsufficientFunds{...} }
+
+
+		# combinedStore.accounts[srcAcc].amount -= amount;
+		# combinedStore.accounts[dstAcc].amount += amount;
+		#
+		## !translated into:!
+
+		src.Body.amount -= amount;
+		dst.Body.amount += amount;
+		
+		# combinedStore.transfers.create(Transfer{
+		# 	From: srcAcc,
+		# 	To: dstAcc,
+		# 	Amount: amount,
+		# 	Time: now(),
+		# });
+		#
+		## !translated into:!
+
+		combinedStore.writeNewVersion(Object{
+			# ignore meta here as not full as other fields will be set by the function
+			Meta{
+				storage: TARGET_STORAGE_FOR_TRANSFERS.DEFAULT_STORAGE_FOR_TRANSFERS,
+			}
+			Body{
+				From: srcAcc,
+				To: dstAcc,
+				Amount: amount,
+				Time: now(),
+			}
+		})
+
+		# tx.commit();
+		#
+		## !translated into:!
+		if src.Meta.storage != GLOBAL_SCHEMA_DEFINITION.TARGET_STORAGE_FOR_ACCOUNTS {
+			src.Meta.storage = GLOBAL_SCHEMA_DEFINITION.TARGET_STORAGE_FOR_ACCOUNTS
+		}
+		if dst.Meta.storage != GLOBAL_SCHEMA_DEFINITION.TARGET_STORAGE_FOR_ACCOUNTS {
+			dst.Meta.storage = GLOBAL_SCHEMA_DEFINITION.TARGET_STORAGE_FOR_ACCOUNTS
+		}
+		combinedStore.writeNewVersion(src);
+		combinedStore.writeNewVersion(dst);
+		
+		
+		# TODO: movement should happen here somehow, How can I move the object from one to another store?
+	}
 
 ```
 

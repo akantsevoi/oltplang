@@ -53,6 +53,42 @@ oltp {
 	}
 }
 
+
+#
+# my fuzzy view on how it might look like
+#
+
+type Meta {
+	version int64
+	hash string
+
+	# the information about which storage hold the up to date version of this object. The source of truth for that specific object
+	storage string
+}
+
+type Object {
+	Body # actual content
+	Meta
+}
+
+impl combinedStore {
+	storages: [](storage, options)
+	objects: Map<id, meta>
+
+	fn get(table: string, id: string) -> Object {
+		# table == "Accounts" for example
+		
+		let m = objects[id];
+		return storages.get(m.storage, table, "id == {id}")
+	}
+
+	fn writeNewVersion(obj: Object) {
+		obj.meta.version++
+		obj.meta.hash = hash(obj.body) 
+		storages.get(obj.storage).Update(table,  obj) # unconditional write? since we control the sequence
+	}
+}
+
 ```
 
 

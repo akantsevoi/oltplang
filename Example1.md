@@ -54,3 +54,15 @@ oltp {
 }
 
 ```
+
+
+So, what happens in essense:
+- we have long term process and short term process
+- we can support consistent state only inside "short O(1)" operations
+- but we need to support long-term scenarious as well
+- in order to support these long-term scenarious we should be able to automatically slice our long-term scenarious into a sequence of correct/pausable "short O(1)" operations (are we talking about CRDT? again)
+- then we just execute these operations with different priorities
+	- ex: maroon operations have lower priority, and when we finish yet another cycle iteration we check if we have something with the higher priority -> for example "oltp request" and if we have - we execute higher priority thing, if not - continue maroon execution
+
+Challenge:
+- how to make sure that our slicing of operations will be ended up in the correct sequence of CRDT operations?

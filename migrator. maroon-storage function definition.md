@@ -1,3 +1,5 @@
+#durableExecution 
+
 - [!] Right now I have some problem to clearly separate maroon-engine itself and storage layer. So sometimes I use words migrator-storage/maroon-storage/maroon-engine interchangeably, it is not always clear yet where is the storage function and where is it execution engine function. **Keep that in mind while reading**
 
 ## Problem
@@ -56,12 +58,13 @@ storage(
 				active bool
 			)
 			migration(
-				// since new field is non-optional we need to add some code that can perform the transition between v1 and v2
-				// underthehood engine will do the heavylifting:
-				//   - introduce a new `active` optional field
-				//   - starts updating value of the field
-				//   - when finishes - it will move the column from optional to non-optional state
+				# since new field is non-optional we need to add some code that can perform the transition between v1 and v2
+				# underthehood engine will do the heavylifting:
+				#   - introduce a new `active` optional field
+				#   - starts updating value of the field
+				#   - when finishes - it will move the column from optional to non-optional state
 				to_v2(obj: v1) -> v2 { 
+					# not very declarative. Other proposals how to solve that situation?
 					is_active := http.call.is_active(obj.id)
 					return v2{
 						active: is_active,
@@ -89,13 +92,13 @@ storage(
 			 )
 		),
 		postgresql(
-			id: "eu-users-repository-new", // imagine that we're migrating users from mongodb to postgres(unified storing approach), but it still should be in some EU-based DC
+			id: "eu-users-repository-new", # imagine that we're migrating users from mongodb to postgres(unified storing approach), but it still should be in some EU-based DC
 			connectionParams: {...},
 			 holdTypes(
 				 User.v1(
 					 id -> users.id,
 					 name -> users.name,
-					 country -> users_meta.country (foreing_key: users.id), // compound object that lives in different tables
+					 country -> users_meta.country (foreing_key: users.id), # compound object that lives in different tables
 				 ),
 				 User.v2(
 					 id -> users.id,
@@ -125,8 +128,8 @@ storage(
 	),
 	location_rules(
 		priority_migration(
-			// in that case data will be slowly copied from one storage to another
-			// TODO: we need to have a requirement here that transformation should cover all the fields and it should be checked
+			# in that case data will be slowly copied from one storage to another
+			# TODO: we need to have a requirement here that transformation should cover all the fields and it should be checked
 			"eu-users-repository" ==> "eu-users-repository-new"
 		)
 		User.v1(country == "USA" => "us-users-repository"),

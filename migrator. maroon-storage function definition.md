@@ -2,7 +2,7 @@
 
 ## Problem
 - provide consistent(invariants satisfaction) and durable storage built on top of different storage solutions presented in the organization
-  - we need to solve that problem in order to open a possibility to write simpler/durable code/logic/scenarios/etc (maroon-engine)
+	- we need to solve that problem in order to open a possibility to write simpler/durable code/logic/scenarios/etc (maroon-engine)
 
 ## Function
 - maroon-storage works as a black box for (business-logic developer)::role
@@ -55,6 +55,19 @@ storage(
 				country string
 				active bool
 			)
+			migration(
+				// since new field is non-optional we need to add some code that can perform the transition between v1 and v2
+				// underthehood engine will do the heavylifting:
+				//   - introduce a new `active` optional field
+				//   - starts updating value of the field
+				//   - when finishes - it will move the column from optional to non-optional state
+				to_v2(obj: v1) -> v2 { 
+					is_active := http.call.is_active(obj.id)
+					return v2{
+						active: is_active,
+						v1...}
+				}
+			)
 		)
 	)
 	repositories (
@@ -63,7 +76,7 @@ storage(
 			connectionParams: {bla bla},
 			 holdTypes(
 				 User.v1(
-					 id -> users.id,
+					 id -> users.id, // mapping between in-memory object and table/field in a table datastore
 					 name -> users.name,
 					 country -> users.country,
 				 ),
@@ -82,7 +95,7 @@ storage(
 				 User.v1(
 					 id -> users.id,
 					 name -> users.name,
-					 country -> users_meta.country (foreing_key: users.id),
+					 country -> users_meta.country (foreing_key: users.id), // compound object that lives in different tables
 				 ),
 				 User.v2(
 					 id -> users.id,
@@ -112,6 +125,8 @@ storage(
 	),
 	location_rules(
 		priority_migration(
+			// in that case data will be slowly copied from one storage to another
+			// TODO: we need to have a requirement here that transformation should cover all the fields and it should be checked
 			"eu-users-repository" ==> "eu-users-repository-new"
 		)
 		User.v1(country == "USA" => "us-users-repository"),
@@ -130,9 +145,11 @@ two parts of migrator's maroon-storage:
 		- id, type, version
 			- [?] what is id here? Is it internal maroon-storage's id? What about ids in repositories? Do we treat them as a piece of data or secondary id or what?
 		- hash(for last n versions and/or last n hours)
+			- in case of 
 		- logs of transition between versions: n and n-1
 	- functions:
-		- indexes for querying?
+		- indexes for querying
+			- [?] how to query effectively the data from different repositories? (do we need to open a conversation of creating indexes in the maroon-storage?)
 - repositories
 	- any storage that can support the contract:
 		- R/W/U/D operations

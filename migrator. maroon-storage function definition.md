@@ -1,5 +1,3 @@
-#durableExecution 
-
 - [!] Right now I have some problem to clearly separate maroon-engine itself and storage layer. So sometimes I use words migrator-storage/maroon-storage/maroon-engine interchangeably, it is not always clear yet where is the storage function and where is it execution engine function. **Keep that in mind while reading**
 
 ## Problem
@@ -50,12 +48,20 @@ storage(
 				id int
 				name string
 				country string
+				index (
+					name: btree
+				)
 			), 
 			v2(
 				id int
 				name string
 				country string
 				active bool
+				age int
+				index (
+					name: btree # btree because we'll need to query ranges
+					age: hash # hash because we'll need to query exact values
+				)
 			)
 			migration(
 				# since new field is non-optional we need to add some code that can perform the transition between v1 and v2
@@ -66,9 +72,14 @@ storage(
 				to_v2(obj: v1) -> v2 { 
 					# not very declarative. Other proposals how to solve that situation?
 					is_active := http.call.is_active(obj.id)
-					return v2{
+					if age := http.call.age_of_user(obj.id); age != nil {
+						age = default_age
+					}
+					return v2{ # choose which fields to setup and which just copy from the old
 						active: is_active,
-						v1...}
+						age: age,
+						v1...
+					}
 				}
 			)
 		)

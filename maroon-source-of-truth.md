@@ -1,0 +1,18 @@
+- keeps
+    - k-v objects
+        - k - key of the object
+        - v 
+            - hash(last n versions)
+            - type
+                - name
+                - supported type versions
+            - version
+            - log of transformations between different object's versions
+    - indexes (for quicker finding the right objects. Ex: which repository to ask)
+- lives on maroon-nodes
+    - to quicker query
+    - quicker perform validations: which code we can/can't deploy depends on the types
+
+- [!] There is difference between type version and object version
+    - [TODO:?] do we need to keep type version for each object? Or it will be  enough to know what's the current active type?
+        - looks like we need. We can use this information to allow active-type switching
